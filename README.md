@@ -1,11 +1,50 @@
-<div align="center">
+# Noorul Huda Islamic Academy - Swalah Class Finance
 
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
+A modern, institutional-grade class financial ledger, fee tracking, contribution management, and payment reminder system built with React, Vite, Tailwind CSS, TypeScript, and Express / Vercel Serverless.
 
-  <h1>Built with AI Studio</h2>
+## Features
 
-  <p>The fastest path from prompt to production with Gemini.</p>
+- **Dashboard & Analytics**: Real-time totals, category breakdowns, monthly trends, and collection rates.
+- **Student Ledger**: Comprehensive student directory with balances, roll numbers, and contact details.
+- **Contributions & Campaigns**: Goal tracking, contribution status by student, and progress indicators.
+- **Expense Logging**: Granular categories, receipts, approval statuses, and notes.
+- **Automated Email Reminders**: Instant payment notices sent via SMTP / relay.
+- **Reporting & Exports**: Export full ledger data to PDF and Excel format.
+- **Audit Logs**: Track every financial update and transaction.
+- **Vercel & Cloud Ready**: Pre-configured with `vercel.json` for one-click deployment.
 
-  <a href="https://aistudio.google.com/apps">Start building</a>
+## Tech Stack
 
-</div>
+- **Frontend**: React 19, TypeScript, Tailwind CSS, Framer Motion, Lucide Icons
+- **Backend / API**: Express & Vercel Serverless Functions (`/api/send-payment-request`)
+- **Exporting**: jsPDF, AutoTable
+
+## Getting Started
+
+### 1. Clone the repository
+```bash
+git clone https://github.com/<your-username>/<repo-name>.git
+cd <repo-name>
+```
+
+### 2. Install dependencies
+```bash
+npm install
+```
+
+### 3. Run development server
+```bash
+npm run dev
+```
+Open `http://localhost:3000` to view the app.
+
+### 4. Build for Production
+```bash
+npm run build
+```
+
+## Deployment to Vercel
+
+1. Import this repository in [Vercel](https://vercel.com).
+2. Set the project name (e.g., `swalahfinancial`).
+3. Click **Deploy**.

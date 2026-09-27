@@ -1,0 +1,152 @@
+{
+  "entities": {
+    "ClassProfile": {
+      "title": "ClassProfile",
+      "description": "Metadata for the school class financial entity",
+      "type": "object",
+      "properties": {
+        "className": { "type": "string", "maxLength": 100 },
+        "institutionName": { "type": "string", "maxLength": 200 },
+        "academicYear": { "type": "string", "maxLength": 50 },
+        "batch": { "type": "string", "maxLength": 100 },
+        "classLeader": { "type": "string", "maxLength": 100 },
+        "assistantLeader": { "type": "string", "maxLength": 100 },
+        "classTeacher": { "type": "string", "maxLength": 100 },
+        "totalStudents": { "type": "number" },
+        "currency": { "type": "string", "maxLength": 10 },
+        "currencySymbol": { "type": "string", "maxLength": 10 },
+        "contactEmail": { "type": "string", "maxLength": 150 },
+        "contactPhone": { "type": "string", "maxLength": 50 },
+        "description": { "type": "string", "maxLength": 1000 },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["className", "institutionName", "academicYear", "currencySymbol"]
+    },
+    "Student": {
+      "title": "Student",
+      "description": "Student roster record with academic roll details and contact information",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "fullName": { "type": "string", "maxLength": 150 },
+        "studentNumber": { "type": "string", "maxLength": 50 },
+        "rollNumber": { "type": "number" },
+        "registrationNumber": { "type": "string", "maxLength": 100 },
+        "phone": { "type": "string", "maxLength": 30 },
+        "email": { "type": "string", "maxLength": 150 },
+        "parentContact": { "type": "string", "maxLength": 50 },
+        "notes": { "type": "string", "maxLength": 1000 },
+        "status": { "type": "string", "enum": ["active", "inactive"] },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["fullName", "rollNumber", "studentNumber", "status"]
+    },
+    "Transaction": {
+      "title": "Transaction",
+      "description": "A single financial ledger entry (income, contribution, expense, refund, advance)",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "date": { "type": "string", "maxLength": 20 },
+        "time": { "type": "string", "maxLength": 20 },
+        "amount": { "type": "number" },
+        "type": {
+          "type": "string",
+          "enum": ["income", "expense", "contribution", "refund", "loan", "advance", "collection", "payment", "adjustment", "other"]
+        },
+        "studentId": { "type": "string", "maxLength": 128 },
+        "studentName": { "type": "string", "maxLength": 150 },
+        "category": { "type": "string", "maxLength": 100 },
+        "description": { "type": "string", "maxLength": 500 },
+        "paymentMethod": { "type": "string", "enum": ["cash", "upi", "bank_transfer", "other"] },
+        "referenceNumber": { "type": "string", "maxLength": 100 },
+        "status": { "type": "string", "enum": ["completed", "pending", "cancelled"] },
+        "createdBy": { "type": "string", "maxLength": 150 },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" },
+        "notes": { "type": "string", "maxLength": 1000 },
+        "campaignId": { "type": "string", "maxLength": 128 },
+        "paidTo": { "type": "string", "maxLength": 150 },
+        "receiptRef": { "type": "string", "maxLength": 100 }
+      },
+      "required": ["amount", "type", "description", "paymentMethod", "status", "date"]
+    },
+    "ContributionCampaign": {
+      "title": "ContributionCampaign",
+      "description": "A class collection drive with targeted student contributions",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "title": { "type": "string", "maxLength": 200 },
+        "requiredTotalAmount": { "type": "number" },
+        "perStudentAmount": { "type": "number" },
+        "dueDate": { "type": "string", "maxLength": 30 },
+        "description": { "type": "string", "maxLength": 1000 },
+        "category": { "type": "string", "maxLength": 100 },
+        "status": { "type": "string", "enum": ["active", "completed", "archived"] },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["title", "perStudentAmount", "dueDate", "status"]
+    },
+    "Reminder": {
+      "title": "Reminder",
+      "description": "Financial reminder for pending student contributions or deadlines",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "title": { "type": "string", "maxLength": 250 },
+        "description": { "type": "string", "maxLength": 1000 },
+        "dueDate": { "type": "string", "maxLength": 30 },
+        "type": { "type": "string", "enum": ["student", "contribution", "general", "report"] },
+        "studentId": { "type": "string", "maxLength": 128 },
+        "studentName": { "type": "string", "maxLength": 150 },
+        "amount": { "type": "number" },
+        "isRepeating": { "type": "boolean" },
+        "status": { "type": "string", "enum": ["active", "completed", "dismissed"] },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["title", "dueDate", "status"]
+    },
+    "AuditLog": {
+      "title": "AuditLog",
+      "description": "Immutable security log of an administrator financial operation",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "action": { "type": "string", "maxLength": 100 },
+        "timestamp": { "type": "string" },
+        "adminEmail": { "type": "string", "maxLength": 150 },
+        "recordId": { "type": "string", "maxLength": 128 },
+        "details": { "type": "string", "maxLength": 1000 }
+      },
+      "required": ["action", "timestamp", "adminEmail", "details"]
+    }
+  },
+  "firestore": {
+    "/classes/{classId}": {
+      "schema": "ClassProfile",
+      "description": "Class profile document storing batch, institution, teacher, and currency preferences."
+    },
+    "/students/{studentId}": {
+      "schema": "Student",
+      "description": "Roster of students enrolled in the class with roll numbers and contact info."
+    },
+    "/transactions/{transactionId}": {
+      "schema": "Transaction",
+      "description": "Financial ledger transactions including collections, expenses, refunds, and advances."
+    },
+    "/contributions/{campaignId}": {
+      "schema": "ContributionCampaign",
+      "description": "Class fund collection drives and quotas."
+    },
+    "/reminders/{reminderId}": {
+      "schema": "Reminder",
+      "description": "Reminders for pending dues and financial deadlines."
+    },
+    "/auditLogs/{logId}": {
+      "schema": "AuditLog",
+      "description": "Immutable audit entries recording administrator logins, ledger mutations, and backups."
+    }
+  }
+}

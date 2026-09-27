@@ -1,0 +1,95 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    // Single Authorized Administrator Verification
+    function isClassAdmin() {
+      return isVerified() && (
+        request.auth.token.email == 'codenavo@gmail.com' ||
+        request.auth.token.email == 'admin@example.com' ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    // Verified Student Check: only allows read access to documents matching the verified token email
+    function isStudentOwner(studentEmail) {
+      return isVerified() && request.auth.token.email == studentEmail;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // 1. Classes collection
+    match /classes/{classId} {
+      allow get: if isClassAdmin() || isVerified();
+      allow list: if isClassAdmin();
+      allow create, update, delete: if isClassAdmin();
+    }
+
+    // 2. Students roster collection
+    match /students/{studentId} {
+      // Class members can ONLY read their own student document matching verified email
+      // They can NEVER access or query another student's document
+      allow get: if isClassAdmin() || (isVerified() && resource.data.email == request.auth.token.email);
+      allow list: if isClassAdmin();
+      // Class members are strictly READ-ONLY (no create, update, delete)
+      allow create, update, delete: if isClassAdmin();
+    }
+
+    // 3. Transactions ledger collection
+    match /transactions/{transactionId} {
+      // Class members can ONLY read their own transactions
+      allow get: if isClassAdmin() || (
+        isVerified() && (
+          (resource.data.studentEmail != null && resource.data.studentEmail == request.auth.token.email) ||
+          (resource.data.studentId != null && resource.data.studentId == request.auth.uid)
+        )
+      );
+      allow list: if isClassAdmin();
+      // Strictly NO edit/write permissions for class members
+      allow create, update, delete: if isClassAdmin();
+    }
+
+    // 4. Contribution campaigns (Read-only for active campaigns)
+    match /contributions/{campaignId} {
+      allow get: if true;
+      allow list: if isClassAdmin() || isVerified();
+      allow create, update, delete: if isClassAdmin();
+    }
+
+    // 5. Reminders (Admin only)
+    match /reminders/{reminderId} {
+      allow get, list: if isClassAdmin();
+      allow create, update, delete: if isClassAdmin();
+    }
+
+    // 6. Audit logs (Admin only, append-only)
+    match /auditLogs/{logId} {
+      allow get, list: if isClassAdmin();
+      allow create: if isClassAdmin();
+      allow update, delete: if false;
+    }
+
+    // 7. Admin identity reference
+    match /admins/{adminUid} {
+      allow read: if isClassAdmin();
+      allow write: if false;
+    }
+  }
+}

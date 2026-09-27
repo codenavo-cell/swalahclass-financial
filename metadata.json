@@ -1,0 +1,7 @@
+{
+  "name": "Class Finance",
+  "description": "Professional class financial management system for single-admin school and class ledger tracking, contributions, and expenses.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+
