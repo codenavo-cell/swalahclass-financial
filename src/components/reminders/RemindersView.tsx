@@ -12,13 +12,64 @@ import {
   AlertCircle,
   X,
   Repeat,
+  Lock,
+  ShieldCheck,
+  ShieldAlert,
 } from 'lucide-react';
+import { ConfirmationModal } from '../common/ConfirmationModal';
+import { AdminActionModal } from '../common/AdminActionModal';
 
 export const RemindersView: React.FC = () => {
-  const { reminders, addReminder, toggleReminder, deleteReminder, students, profile } =
-    useFinance();
+  const {
+    reminders,
+    addReminder,
+    toggleReminder,
+    deleteReminder,
+    students,
+    profile,
+    isAdmin,
+    auth,
+  } = useFinance();
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+
+  // Admin Guard State
+  const [adminPrompt, setAdminPrompt] = useState<{
+    isOpen: boolean;
+    title: string;
+    description: string;
+    actionLabel: string;
+    isDestructive: boolean;
+    onAuthorized: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    description: '',
+    actionLabel: '',
+    isDestructive: false,
+    onAuthorized: () => {},
+  });
+
+  const handleAdminProtectedAction = (
+    title: string,
+    description: string,
+    action: () => void,
+    isDestructive = false,
+  ) => {
+    if (isAdmin) {
+      action();
+    } else {
+      setAdminPrompt({
+        isOpen: true,
+        title,
+        description,
+        actionLabel: isDestructive ? 'Authorize Delete' : 'Authorize & Open',
+        isDestructive,
+        onAuthorized: action,
+      });
+    }
+  };
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [dueDate, setDueDate] = useState(
@@ -62,6 +113,53 @@ export const RemindersView: React.FC = () => {
 
   return (
     <div className="space-y-6 pb-20 md:pb-8">
+      {/* Admin Security Banner */}
+      <div
+        className={`p-3.5 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs ${
+          isAdmin
+            ? 'bg-amber-50/80 border-amber-200 text-amber-950'
+            : 'bg-amber-50 border-amber-200 text-amber-950'
+        }`}
+      >
+        <div className="flex items-center gap-2.5">
+          {isAdmin ? (
+            <div className="w-7 h-7 rounded-lg bg-amber-600 text-white flex items-center justify-center shrink-0">
+              <ShieldCheck className="w-4 h-4" />
+            </div>
+          ) : (
+            <div className="w-7 h-7 rounded-lg bg-amber-600 text-white flex items-center justify-center shrink-0">
+              <Lock className="w-4 h-4" />
+            </div>
+          )}
+          <div>
+            <span className="font-extrabold uppercase tracking-wide text-[11px] block">
+              {isAdmin ? 'Admin Control Active' : 'Restricted: Admin Control Only'}
+            </span>
+            <span className="text-slate-600 text-[11px]">
+              {isAdmin
+                ? `Logged in as Administrator (${auth.email || 'codenavo@gmail.com'}). All reminder notices are synchronized.`
+                : 'Reminders can only be scheduled, marked, or deleted through Administrator authorization.'}
+            </span>
+          </div>
+        </div>
+
+        {!isAdmin && (
+          <button
+            onClick={() =>
+              handleAdminProtectedAction(
+                'Admin Session Authorization',
+                'Enter administrator credentials to unlock reminder schedule controls.',
+                () => {},
+              )
+            }
+            className="px-3 py-1.5 bg-amber-700 hover:bg-amber-800 text-white text-[11px] font-bold rounded-xl shadow-xs shrink-0 transition flex items-center gap-1.5 self-start sm:self-auto cursor-pointer"
+          >
+            <Lock className="w-3 h-3" />
+            <span>Unlock Admin</span>
+          </button>
+        )}
+      </div>
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -75,7 +173,13 @@ export const RemindersView: React.FC = () => {
         </div>
 
         <button
-          onClick={() => setIsAddModalOpen(true)}
+          onClick={() =>
+            handleAdminProtectedAction(
+              'Authorize New Reminder',
+              'Scheduling financial reminders requires administrator authorization.',
+              () => setIsAddModalOpen(true),
+            )
+          }
           className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold shadow-md shadow-amber-600/20 flex items-center gap-2 transition cursor-pointer self-start sm:self-auto"
         >
           <Plus className="w-4 h-4 stroke-[2.5]" />
@@ -184,9 +288,16 @@ export const RemindersView: React.FC = () => {
                     </span>
                   )}
                   <button
-                    onClick={() => deleteReminder(rem.id)}
+                    onClick={() =>
+                      handleAdminProtectedAction(
+                        'Authorize Reminder Deletion',
+                        `Deleting reminder "${rem.title}" requires administrator authorization.`,
+                        () => setDeleteId(rem.id),
+                        true,
+                      )
+                    }
                     className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer"
-                    title="Delete reminder"
+                    title="Delete reminder (Admin)"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -196,6 +307,33 @@ export const RemindersView: React.FC = () => {
           })
         )}
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {deleteId && (
+        <ConfirmationModal
+          isOpen={true}
+          title="Delete Reminder Notice"
+          message={`Are you sure you want to delete this reminder notice?`}
+          confirmLabel="Delete Reminder"
+          isDestructive={true}
+          onConfirm={() => {
+            deleteReminder(deleteId);
+            setDeleteId(null);
+          }}
+          onCancel={() => setDeleteId(null)}
+        />
+      )}
+
+      {/* Admin Action Guard Modal */}
+      <AdminActionModal
+        isOpen={adminPrompt.isOpen}
+        onClose={() => setAdminPrompt((prev) => ({ ...prev, isOpen: false }))}
+        title={adminPrompt.title}
+        description={adminPrompt.description}
+        actionLabel={adminPrompt.actionLabel}
+        isDestructive={adminPrompt.isDestructive}
+        onAuthorized={adminPrompt.onAuthorized}
+      />
 
       {/* Add Reminder Modal */}
       {isAddModalOpen && (

@@ -91,20 +91,40 @@ export const Navbar: React.FC<NavbarProps> = ({
           {/* User badge & logout */}
           <div className="flex items-center gap-2">
             <div className="hidden lg:flex flex-col text-right">
-              <span className="text-xs font-bold text-slate-900 leading-tight">
-                {auth.role === 'class_teacher' ? 'Class Teacher' : 'Admin'}
+              <span className="text-xs font-bold text-slate-900 leading-tight flex items-center justify-end gap-1">
+                {auth.role === 'admin' ? (
+                  <span className="text-emerald-700 flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    Admin Control
+                  </span>
+                ) : auth.role === 'class_teacher' ? (
+                  'Class Teacher'
+                ) : (
+                  <span className="text-amber-700 flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                    Read-Only
+                  </span>
+                )}
               </span>
-              <span className="text-[10px] text-slate-400 font-mono truncate max-w-[120px]">
-                {auth.email}
+              <span className="text-[10px] text-slate-400 font-mono truncate max-w-[130px]">
+                {auth.email || 'Visitor'}
               </span>
             </div>
-            <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-teal-700 to-emerald-600 text-white flex items-center justify-center font-bold text-xs shadow-sm">
-              {auth.role === 'class_teacher' ? 'T' : 'A'}
+            <div
+              className={`w-8 h-8 rounded-full text-white flex items-center justify-center font-bold text-xs shadow-sm ${
+                auth.role === 'admin'
+                  ? 'bg-gradient-to-tr from-blue-900 to-indigo-700'
+                  : auth.role === 'class_teacher'
+                  ? 'bg-gradient-to-tr from-teal-700 to-emerald-600'
+                  : 'bg-gradient-to-tr from-amber-600 to-slate-600'
+              }`}
+            >
+              {auth.role === 'admin' ? 'A' : auth.role === 'class_teacher' ? 'T' : 'G'}
             </div>
             <button
               onClick={logout}
               className="p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer"
-              title="Logout session"
+              title={auth.isAuthenticated ? 'Logout session' : 'Sign in'}
             >
               <LogOut className="w-4 h-4" />
             </button>

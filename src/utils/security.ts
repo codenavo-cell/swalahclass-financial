@@ -12,7 +12,10 @@ export async function hashPassword(password: string): Promise<string> {
 
 // Pre-computed SHA-256 hashes of authorized default credentials
 export const DEFAULT_ADMIN_PASSWORD_HASH =
-  '944d0c05f38e4fd10ccdd724b5f3af01a4474a8df470a06d15b49b1549ac3ea8';
+  '944d0c05f38e4fd10ccdd724b5f3af01a4474a8df470a06d15b49b1549ac3ea8'; // 301thwalha
+
+export const ALTERNATIVE_ADMIN_PASSWORD_HASH =
+  'a9c56474ca5ec60a282cc6cff1a989d643d7e50f0424ece4fa25244d10197706'; // 301thwalha1
 
 export const DEFAULT_TEACHER_PASSWORD_HASH =
   '158a323a7ba44870f23d96f1516dd70aa48e9a72db4ebb026b0a89e212a208ab';
@@ -22,6 +25,7 @@ export const AUTHORIZED_ADMIN_EMAILS = [
   'admin@example.com',
   'codenavo@gmail.com',
   'admin',
+  '9611395005',
 ];
 
 export const AUTHORIZED_TEACHER_IDENTIFIERS = [

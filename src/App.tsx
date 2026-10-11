@@ -58,7 +58,7 @@ const MainAppContent: React.FC = () => {
   const [paymentRequestAmount, setPaymentRequestAmount] = useState<number | undefined>(undefined);
 
   // Puzzle Gate ("before open website" challenge)
-  const [showPuzzleGate, setShowPuzzleGate] = useState(true);
+  const [showPuzzleGate, setShowPuzzleGate] = useState(false);
 
   // Class Member Portal Mode
   const [showMemberPortal, setShowMemberPortal] = useState(false);

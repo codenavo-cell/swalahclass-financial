@@ -18,8 +18,12 @@ import {
   CheckCircle2,
   AlertCircle,
   X,
+  Lock,
+  ShieldCheck,
+  ShieldAlert,
 } from 'lucide-react';
 import { ConfirmationModal } from '../common/ConfirmationModal';
+import { AdminActionModal } from '../common/AdminActionModal';
 
 interface TransactionsViewProps {
   onOpenAddModal: (type?: TransactionType) => void;
@@ -32,7 +36,7 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
   onEditTransaction,
   onSelectStudent,
 }) => {
-  const { transactions, categories, students, profile, deleteTransaction } = useFinance();
+  const { transactions, categories, students, profile, deleteTransaction, isAdmin, auth } = useFinance();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<string>('all');
@@ -45,6 +49,43 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
 
   const [showFiltersDrawer, setShowFiltersDrawer] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+
+  // Admin Guard State
+  const [adminPrompt, setAdminPrompt] = useState<{
+    isOpen: boolean;
+    title: string;
+    description: string;
+    actionLabel: string;
+    isDestructive: boolean;
+    onAuthorized: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    description: '',
+    actionLabel: '',
+    isDestructive: false,
+    onAuthorized: () => {},
+  });
+
+  const handleAdminProtectedAction = (
+    title: string,
+    description: string,
+    action: () => void,
+    isDestructive = false,
+  ) => {
+    if (isAdmin) {
+      action();
+    } else {
+      setAdminPrompt({
+        isOpen: true,
+        title,
+        description,
+        actionLabel: isDestructive ? 'Authorize Delete' : 'Authorize & Open',
+        isDestructive,
+        onAuthorized: action,
+      });
+    }
+  };
 
   // Filtered transactions
   const filteredTransactions = useMemo(() => {
@@ -167,6 +208,53 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
 
   return (
     <div className="space-y-6 pb-20 md:pb-8">
+      {/* Admin Security Banner */}
+      <div
+        className={`p-3.5 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs ${
+          isAdmin
+            ? 'bg-emerald-50 border-emerald-200 text-emerald-950'
+            : 'bg-amber-50 border-amber-200 text-amber-950'
+        }`}
+      >
+        <div className="flex items-center gap-2.5">
+          {isAdmin ? (
+            <div className="w-7 h-7 rounded-lg bg-emerald-600 text-white flex items-center justify-center shrink-0">
+              <ShieldCheck className="w-4 h-4" />
+            </div>
+          ) : (
+            <div className="w-7 h-7 rounded-lg bg-amber-600 text-white flex items-center justify-center shrink-0">
+              <Lock className="w-4 h-4" />
+            </div>
+          )}
+          <div>
+            <span className="font-extrabold uppercase tracking-wide text-[11px] block">
+              {isAdmin ? 'Admin Control Active' : 'Restricted: Admin Control Only'}
+            </span>
+            <span className="text-slate-600 text-[11px]">
+              {isAdmin
+                ? `Logged in as Administrator (${auth.email || 'codenavo@gmail.com'}). All changes & deletions are strictly authenticated.`
+                : 'Transactions can only be added, edited, or deleted through Administrator authorization.'}
+            </span>
+          </div>
+        </div>
+
+        {!isAdmin && (
+          <button
+            onClick={() =>
+              handleAdminProtectedAction(
+                'Admin Session Authorization',
+                'Enter administrator credentials to unlock modification and deletion permissions.',
+                () => {},
+              )
+            }
+            className="px-3 py-1.5 bg-amber-700 hover:bg-amber-800 text-white text-[11px] font-bold rounded-xl shadow-xs shrink-0 transition flex items-center gap-1.5 self-start sm:self-auto cursor-pointer"
+          >
+            <Lock className="w-3 h-3" />
+            <span>Unlock Admin</span>
+          </button>
+        )}
+      </div>
+
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -189,7 +277,13 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
           </button>
 
           <button
-            onClick={() => onOpenAddModal('income')}
+            onClick={() =>
+              handleAdminProtectedAction(
+                'Authorize Income Entry',
+                'Adding money/contributions to the ledger requires administrator authorization.',
+                () => onOpenAddModal('income'),
+              )
+            }
             className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-sm flex items-center gap-1.5 transition cursor-pointer"
           >
             <ArrowDownLeft className="w-4 h-4" />
@@ -197,7 +291,13 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
           </button>
 
           <button
-            onClick={() => onOpenAddModal('expense')}
+            onClick={() =>
+              handleAdminProtectedAction(
+                'Authorize Expense Entry',
+                'Logging class expenses requires administrator authorization.',
+                () => onOpenAddModal('expense'),
+              )
+            }
             className="px-3.5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-sm flex items-center gap-1.5 transition cursor-pointer"
           >
             <ArrowUpRight className="w-4 h-4" />
@@ -444,16 +544,29 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
                       <td className="py-3 px-4 text-center">
                         <div className="flex items-center justify-center gap-1">
                           <button
-                            onClick={() => onEditTransaction(tx)}
+                            onClick={() =>
+                              handleAdminProtectedAction(
+                                'Authorize Transaction Edit',
+                                'Modifying recorded financial transactions requires administrator authorization.',
+                                () => onEditTransaction(tx),
+                              )
+                            }
                             className="p-1 rounded-lg text-slate-400 hover:text-blue-700 hover:bg-blue-50"
-                            title="Edit transaction"
+                            title="Edit transaction (Admin)"
                           >
                             <Edit2 className="w-3.5 h-3.5" />
                           </button>
                           <button
-                            onClick={() => setDeleteId(tx.id)}
+                            onClick={() =>
+                              handleAdminProtectedAction(
+                                'Authorize Transaction Deletion',
+                                'Permanently removing financial transaction entries requires administrator authorization.',
+                                () => setDeleteId(tx.id),
+                                true,
+                              )
+                            }
                             className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50"
-                            title="Delete transaction"
+                            title="Delete transaction (Admin)"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
@@ -530,14 +643,29 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
                         {tx.status}
                       </span>
                       <button
-                        onClick={() => onEditTransaction(tx)}
+                        onClick={() =>
+                          handleAdminProtectedAction(
+                            'Authorize Transaction Edit',
+                            'Modifying recorded financial transactions requires administrator authorization.',
+                            () => onEditTransaction(tx),
+                          )
+                        }
                         className="p-1 text-slate-400 hover:text-blue-700"
+                        title="Edit transaction"
                       >
                         <Edit2 className="w-3.5 h-3.5" />
                       </button>
                       <button
-                        onClick={() => setDeleteId(tx.id)}
+                        onClick={() =>
+                          handleAdminProtectedAction(
+                            'Authorize Transaction Deletion',
+                            'Permanently removing financial transaction entries requires administrator authorization.',
+                            () => setDeleteId(tx.id),
+                            true,
+                          )
+                        }
                         className="p-1 text-slate-400 hover:text-rose-600"
+                        title="Delete transaction"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
@@ -565,6 +693,17 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
           onCancel={() => setDeleteId(null)}
         />
       )}
+
+      {/* Admin Guard Verification Modal */}
+      <AdminActionModal
+        isOpen={adminPrompt.isOpen}
+        onClose={() => setAdminPrompt((prev) => ({ ...prev, isOpen: false }))}
+        title={adminPrompt.title}
+        description={adminPrompt.description}
+        actionLabel={adminPrompt.actionLabel}
+        isDestructive={adminPrompt.isDestructive}
+        onAuthorized={adminPrompt.onAuthorized}
+      />
     </div>
   );
 };

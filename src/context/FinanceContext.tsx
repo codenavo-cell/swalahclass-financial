@@ -28,12 +28,13 @@ import { firestoreService } from '../firebase/firestoreService';
 import {
   hashPassword,
   DEFAULT_ADMIN_PASSWORD_HASH,
+  ALTERNATIVE_ADMIN_PASSWORD_HASH,
   DEFAULT_TEACHER_PASSWORD_HASH,
   AUTHORIZED_ADMIN_EMAILS,
   AUTHORIZED_TEACHER_IDENTIFIERS,
 } from '../utils/security';
 
-export type UserRole = 'admin' | 'class_teacher';
+export type UserRole = 'admin' | 'class_teacher' | 'guest';
 
 export interface AdminAuth {
   isAuthenticated: boolean;
@@ -46,11 +47,15 @@ export interface AdminAuth {
 interface FinanceContextType {
   // Auth
   auth: AdminAuth;
+  isAdmin: boolean;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
+  verifyAdminPassword: (password: string) => Promise<boolean>;
+  enterPublicGuestMode: () => void;
   requestPasswordReset: (email: string) => { success: boolean; message: string };
   updateAdminCredentials: (newEmail: string, newPassword?: string) => Promise<boolean>;
   adminEmail: string;
+  adminCreds: { email: string; passwordHash: string };
 
   // Data
   profile: ClassProfile;
@@ -153,7 +158,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     };
   });
 
-  // Admin auth session
+  // Admin auth session - defaults to secure unauthenticated state
   const [auth, setAuth] = useState<AdminAuth>(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEYS.AUTH);
@@ -164,12 +169,13 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     } catch (e) {
       console.error(e);
     }
-    // Automatically authenticated as demo administrator in local dev session for seamless initial experience
+    // Default locked state: unauthenticated visitors must log in as Administrator
     return {
-      isAuthenticated: true,
-      email: 'codenavo@gmail.com',
-      name: 'Class Finance Administrator',
-      lastLogin: new Date().toISOString(),
+      isAuthenticated: false,
+      email: null,
+      name: '',
+      role: undefined,
+      lastLogin: null,
     };
   });
 
@@ -466,7 +472,8 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     if (isAdmin) {
       const isPasswordValid =
         hashedInput === adminCreds.passwordHash ||
-        hashedInput === DEFAULT_ADMIN_PASSWORD_HASH;
+        hashedInput === DEFAULT_ADMIN_PASSWORD_HASH ||
+        hashedInput === ALTERNATIVE_ADMIN_PASSWORD_HASH;
 
       if (!isPasswordValid) {
         return {
@@ -494,6 +501,42 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       success: false,
       error: 'Invalid credentials. Please verify your email/identifier and password.',
     };
+  };
+
+  const verifyAdminPassword = async (pass: string): Promise<boolean> => {
+    const hashed = await hashPassword(pass);
+    const valid =
+      hashed === adminCreds.passwordHash ||
+      hashed === DEFAULT_ADMIN_PASSWORD_HASH ||
+      hashed === ALTERNATIVE_ADMIN_PASSWORD_HASH;
+
+    if (valid) {
+      if (!auth.isAuthenticated || auth.role !== 'admin') {
+        const adminAuth: AdminAuth = {
+          isAuthenticated: true,
+          email: adminCreds.email || 'codenavo@gmail.com',
+          name: 'Class Finance Administrator',
+          role: 'admin',
+          lastLogin: new Date().toISOString(),
+        };
+        setAuth(adminAuth);
+        logAuditAction('LOGIN', 'Administrator authorization granted via security modal');
+      }
+      return true;
+    }
+    return false;
+  };
+
+  const enterPublicGuestMode = () => {
+    const guestAuth: AdminAuth = {
+      isAuthenticated: true,
+      email: 'visitor@public.view',
+      name: 'Class Member / Guest (Read-Only)',
+      role: 'guest',
+      lastLogin: new Date().toISOString(),
+    };
+    setAuth(guestAuth);
+    logAuditAction('LOGIN', 'Visitor entered Public Read-Only Mode');
   };
 
   const logout = () => {
@@ -1011,13 +1054,21 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     addNotification('Transactions Cleared', 'Financial records have been emptied.', 'warning');
   };
 
+  const isUserAdmin = Boolean(
+    auth.isAuthenticated && (auth.role === 'admin' || auth.email === 'codenavo@gmail.com' || auth.email === adminCreds.email)
+  );
+
   const value = {
     auth,
+    isAdmin: isUserAdmin,
     login,
     logout,
+    verifyAdminPassword,
+    enterPublicGuestMode,
     requestPasswordReset,
     updateAdminCredentials,
     adminEmail: adminCreds.email,
+    adminCreds,
     profile,
     students,
     transactions,

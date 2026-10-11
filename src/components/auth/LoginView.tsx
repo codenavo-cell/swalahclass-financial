@@ -27,13 +27,13 @@ export const LoginView: React.FC<LoginViewProps> = ({
   onOpenMemberPortal,
   onOpenNonogramPuzzle,
 }) => {
-  const { login, requestPasswordReset, profile } = useFinance();
+  const { login, requestPasswordReset, profile, enterPublicGuestMode } = useFinance();
 
   // Role selection state (Admin default selected with teal outline)
   const [selectedRole, setSelectedRole] = useState<UserRole>('admin');
 
-  // Input states (clean and soft, no hardcoded prefilled emails or passwords)
-  const [username, setUsername] = useState('');
+  // Input states - default to authorized admin identifier for convenience
+  const [username, setUsername] = useState('codenavo@gmail.com');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
@@ -49,11 +49,15 @@ export const LoginView: React.FC<LoginViewProps> = ({
   const [recoveryInput, setRecoveryInput] = useState('');
   const [recoveryFeedback, setRecoveryFeedback] = useState<string | null>(null);
 
-  // Handle Role selection - reset fields so inputs remain clean with soft placeholders only
+  // Handle Role selection
   const handleSelectRole = (role: UserRole) => {
     setSelectedRole(role);
     setError(null);
-    setUsername('');
+    if (role === 'admin') {
+      setUsername('codenavo@gmail.com');
+    } else {
+      setUsername('');
+    }
     setPassword('');
 
     if (role === 'student') {
@@ -309,9 +313,9 @@ export const LoginView: React.FC<LoginViewProps> = ({
               </button>
             </form>
 
-            {/* Student Check My Pending Option */}
-            {onOpenMemberPortal && (
-              <div className="pt-3 border-t border-slate-100 text-center">
+            {/* Student Check My Pending Option & Read-only preview */}
+            <div className="pt-3 border-t border-slate-100 text-center space-y-2">
+              {onOpenMemberPortal && (
                 <button
                   type="button"
                   onClick={onOpenMemberPortal}
@@ -320,8 +324,17 @@ export const LoginView: React.FC<LoginViewProps> = ({
                   <Receipt className="w-4 h-4 text-emerald-700" />
                   <span>CLASS MEMBER — CHECK MY PENDING</span>
                 </button>
-              </div>
-            )}
+              )}
+
+              <button
+                type="button"
+                onClick={enterPublicGuestMode}
+                className="w-full py-2.5 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 text-xs font-bold flex items-center justify-center gap-2 transition cursor-pointer"
+              >
+                <Eye className="w-4 h-4 text-slate-500" />
+                <span>VIEW PUBLIC LEDGER (READ-ONLY)</span>
+              </button>
+            </div>
           </div>
         </div>
 

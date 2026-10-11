@@ -14,9 +14,12 @@ import {
   Check,
   ChevronRight,
   TrendingUp,
+  Lock,
+  ShieldCheck,
 } from 'lucide-react';
 import { AddCampaignModal } from './AddCampaignModal';
 import { PublicPaymentRequestModal } from '../requests/PublicPaymentRequestModal';
+import { AdminActionModal } from '../common/AdminActionModal';
 
 export const ContributionsView: React.FC = () => {
   const {
@@ -25,6 +28,8 @@ export const ContributionsView: React.FC = () => {
     transactions,
     profile,
     recordContributionPayment,
+    isAdmin,
+    auth,
   } = useFinance();
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -32,6 +37,43 @@ export const ContributionsView: React.FC = () => {
   const [selectedCampaignForPayment, setSelectedCampaignForPayment] =
     useState<ContributionCampaign | null>(null);
   const [shareCampaign, setShareCampaign] = useState<ContributionCampaign | null>(null);
+
+  // Admin Guard State
+  const [adminPrompt, setAdminPrompt] = useState<{
+    isOpen: boolean;
+    title: string;
+    description: string;
+    actionLabel: string;
+    isDestructive: boolean;
+    onAuthorized: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    description: '',
+    actionLabel: '',
+    isDestructive: false,
+    onAuthorized: () => {},
+  });
+
+  const handleAdminProtectedAction = (
+    title: string,
+    description: string,
+    action: () => void,
+    isDestructive = false,
+  ) => {
+    if (isAdmin) {
+      action();
+    } else {
+      setAdminPrompt({
+        isOpen: true,
+        title,
+        description,
+        actionLabel: isDestructive ? 'Authorize Delete' : 'Authorize & Open',
+        isDestructive,
+        onAuthorized: action,
+      });
+    }
+  };
 
   // Quick record payment state
   const [paymentStudentId, setPaymentStudentId] = useState<string>('');
@@ -86,16 +128,69 @@ export const ContributionsView: React.FC = () => {
     e.preventDefault();
     if (!selectedCampaignForPayment || !paymentStudentId) return;
 
-    const amt = parseFloat(paymentAmount) || selectedCampaignForPayment.perStudentAmount;
-    recordContributionPayment(selectedCampaignForPayment.id, paymentStudentId, amt, paymentMethod);
+    handleAdminProtectedAction(
+      'Authorize Payment Collection',
+      'Recording student fee/contribution collection requires administrator authorization.',
+      () => {
+        const amt = parseFloat(paymentAmount) || selectedCampaignForPayment.perStudentAmount;
+        recordContributionPayment(selectedCampaignForPayment.id, paymentStudentId, amt, paymentMethod);
 
-    setPaymentSuccessMsg(`Payment of ${profile.currencySymbol}${amt} recorded successfully!`);
-    setPaymentAmount('');
-    setTimeout(() => setPaymentSuccessMsg(null), 3000);
+        setPaymentSuccessMsg(`Payment of ${profile.currencySymbol}${amt} recorded successfully!`);
+        setPaymentAmount('');
+        setTimeout(() => setPaymentSuccessMsg(null), 3000);
+      },
+    );
   };
 
   return (
     <div className="space-y-6 pb-20 md:pb-8">
+      {/* Admin Security Banner */}
+      <div
+        className={`p-3.5 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs ${
+          isAdmin
+            ? 'bg-indigo-50 border-indigo-200 text-indigo-950'
+            : 'bg-amber-50 border-amber-200 text-amber-950'
+        }`}
+      >
+        <div className="flex items-center gap-2.5">
+          {isAdmin ? (
+            <div className="w-7 h-7 rounded-lg bg-indigo-700 text-white flex items-center justify-center shrink-0">
+              <ShieldCheck className="w-4 h-4" />
+            </div>
+          ) : (
+            <div className="w-7 h-7 rounded-lg bg-amber-600 text-white flex items-center justify-center shrink-0">
+              <Lock className="w-4 h-4" />
+            </div>
+          )}
+          <div>
+            <span className="font-extrabold uppercase tracking-wide text-[11px] block">
+              {isAdmin ? 'Admin Control Active' : 'Restricted: Admin Control Only'}
+            </span>
+            <span className="text-slate-600 text-[11px]">
+              {isAdmin
+                ? `Logged in as Administrator (${auth.email || 'codenavo@gmail.com'}). You have full authority to create drives and record collections.`
+                : 'Contribution campaigns and payment entries can only be configured by the Administrator.'}
+            </span>
+          </div>
+        </div>
+
+        {!isAdmin && (
+          <button
+            onClick={() =>
+              handleAdminProtectedAction(
+                'Admin Session Authorization',
+                'Enter administrator credentials to unlock contribution campaign controls.',
+                () => {},
+              )
+            }
+            className="px-3 py-1.5 bg-amber-700 hover:bg-amber-800 text-white text-[11px] font-bold rounded-xl shadow-xs shrink-0 transition flex items-center gap-1.5 self-start sm:self-auto cursor-pointer"
+          >
+            <Lock className="w-3 h-3" />
+            <span>Unlock Admin</span>
+          </button>
+        )}
+      </div>
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -109,10 +204,16 @@ export const ContributionsView: React.FC = () => {
         </div>
 
         <button
-          onClick={() => {
-            setEditingCampaign(null);
-            setIsAddModalOpen(true);
-          }}
+          onClick={() =>
+            handleAdminProtectedAction(
+              'Authorize New Contribution Campaign',
+              'Creating class contribution campaigns requires administrator authorization.',
+              () => {
+                setEditingCampaign(null);
+                setIsAddModalOpen(true);
+              },
+            )
+          }
           className="px-4 py-2 rounded-xl bg-indigo-700 hover:bg-indigo-800 text-white text-xs font-bold shadow-md shadow-indigo-700/20 flex items-center gap-2 transition cursor-pointer self-start sm:self-auto"
         >
           <Plus className="w-4 h-4 stroke-[2.5]" />
@@ -440,6 +541,17 @@ export const ContributionsView: React.FC = () => {
           campaign={shareCampaign}
         />
       )}
+
+      {/* Admin Action Guard Modal */}
+      <AdminActionModal
+        isOpen={adminPrompt.isOpen}
+        onClose={() => setAdminPrompt((prev) => ({ ...prev, isOpen: false }))}
+        title={adminPrompt.title}
+        description={adminPrompt.description}
+        actionLabel={adminPrompt.actionLabel}
+        isDestructive={adminPrompt.isDestructive}
+        onAuthorized={adminPrompt.onAuthorized}
+      />
     </div>
   );
 };

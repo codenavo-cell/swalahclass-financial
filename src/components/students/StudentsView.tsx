@@ -19,8 +19,11 @@ import {
   Sparkles,
   Download,
   Settings,
+  Lock,
+  ShieldCheck,
 } from 'lucide-react';
 import { ConfirmationModal } from '../common/ConfirmationModal';
+import { AdminActionModal } from '../common/AdminActionModal';
 
 interface StudentsViewProps {
   onSelectStudent: (student: Student) => void;
@@ -66,9 +69,10 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
     updateStudent,
     removeAllStudentsExceptOne,
     auth,
+    isAdmin,
   } = useFinance();
 
-  const isAuthorized = auth.role === 'admin' || auth.role === 'class_teacher';
+  const isAuthorized = isAdmin || auth.role === 'class_teacher';
 
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
@@ -76,6 +80,43 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [showRemainOneConfirm, setShowRemainOneConfirm] = useState(false);
+
+  // Admin Guard State
+  const [adminPrompt, setAdminPrompt] = useState<{
+    isOpen: boolean;
+    title: string;
+    description: string;
+    actionLabel: string;
+    isDestructive: boolean;
+    onAuthorized: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    description: '',
+    actionLabel: '',
+    isDestructive: false,
+    onAuthorized: () => {},
+  });
+
+  const handleAdminProtectedAction = (
+    title: string,
+    description: string,
+    action: () => void,
+    isDestructive = false,
+  ) => {
+    if (isAdmin) {
+      action();
+    } else {
+      setAdminPrompt({
+        isOpen: true,
+        title,
+        description,
+        actionLabel: isDestructive ? 'Authorize Delete' : 'Authorize & Open',
+        isDestructive,
+        onAuthorized: action,
+      });
+    }
+  };
 
   // Filter & sort logic
   const filteredStudents = useMemo(() => {
@@ -172,7 +213,14 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
         <div className="flex items-center gap-2">
           {students.length > 1 && (
             <button
-              onClick={() => setShowRemainOneConfirm(true)}
+              onClick={() =>
+                handleAdminProtectedAction(
+                  'Authorize Directory Cleanup',
+                  'Removing multiple students to leave 1 member requires administrator authorization.',
+                  () => setShowRemainOneConfirm(true),
+                  true,
+                )
+              }
               className="px-3 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
               title="Remove other students and remain 1 member"
             >
@@ -191,7 +239,13 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
           </button>
 
           <button
-            onClick={onOpenAddStudentModal}
+            onClick={() =>
+              handleAdminProtectedAction(
+                'Authorize New Student Enrollment',
+                'Adding new student profiles to the class ledger requires administrator authorization.',
+                onOpenAddStudentModal,
+              )
+            }
             className="px-4 py-2 rounded-xl bg-blue-800 hover:bg-blue-900 text-white text-xs font-bold shadow-md shadow-blue-800/20 flex items-center gap-2 transition cursor-pointer"
           >
             <Plus className="w-4 h-4 stroke-[2.5]" />
@@ -492,6 +546,16 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
           onCancel={() => setShowRemainOneConfirm(false)}
         />
       )}
+      {/* Admin Action Guard Modal */}
+      <AdminActionModal
+        isOpen={adminPrompt.isOpen}
+        onClose={() => setAdminPrompt((prev) => ({ ...prev, isOpen: false }))}
+        title={adminPrompt.title}
+        description={adminPrompt.description}
+        actionLabel={adminPrompt.actionLabel}
+        isDestructive={adminPrompt.isDestructive}
+        onAuthorized={adminPrompt.onAuthorized}
+      />
     </div>
   );
 };
